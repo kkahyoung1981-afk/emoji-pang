@@ -9,7 +9,7 @@ genai.configure(api_key=api_key)
 st.title("나의 AI 서비스: Emiji Pang")
 
 # 2. AI 모델 설정
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-1.0-pro')
 
 # 3. 사용자 입력 받기
 user_input = st.text_input("질문을 입력하세요:")
