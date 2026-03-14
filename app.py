@@ -1,65 +1,74 @@
 import streamlit as st
 import random
-import time
-import json
 
-# --- Constants & Settings ---
-EMOJI_POOL = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐯', '🦁', '🐷', '🐸', '🐵', '🐔', '🐧']
-RANKING_KEY = 'emoji_rank_v4'
+# --- Constants ---
+EMOJI_POOL = [
+    '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐯', '🦁', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦',
+    '🐤', '🐣', '🐥', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷',
+    '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳',
+    '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃'
+]
+MATCH_SCORE = 100
 
-# 세션 상태 초기화
-if "screen" not in st.session_state: st.session_state.screen = 'START'
-if "score" not in st.session_state: st.session_state.score = 0
-if "cards" not in st.session_state: st.session_state.cards = []
+# --- State Initialization ---
+if 'screen' not in st.session_state: st.session_state.screen = 'START'
+if 'cards' not in st.session_state: st.session_state.cards = []
+if 'selected_cards' not in st.session_state: st.session_state.selected_cards = [] 
+if 'score' not in st.session_state: st.session_state.score = 0
+if 'difficulty' not in st.session_state: st.session_state.difficulty = 'EASY'
 
-def get_new_board():
-    unique_emojis = random.sample(EMOJI_POOL, 8)
-    pair = random.choice(unique_emojis)
-    board = unique_emojis + [pair]
+# --- Game Logic ---
+def generate_board(difficulty):
+    size = 16 if difficulty == 'EASY' else 25
+    # 현재 풀에서 무작위로 선택
+    emojis = random.sample(EMOJI_POOL, size - 1)
+    pair = random.choice(emojis)
+    board = emojis + [pair]
     random.shuffle(board)
-    return [{"id": i, "emoji": e} for i, e in enumerate(board)]
+    return [{'id': i, 'emoji': e} for i, e in enumerate(board)]
 
-# --- 화면별 함수 ---
+def get_new_emoji(current_emojis):
+    # 보드에 없는 새로운 이모지 하나 반환
+    available = [e for e in EMOJI_POOL if e not in current_emojis]
+    return random.choice(available) if available else '🍎'
 
-def show_start():
-    st.title("🍎 이모지 팡!")
-    st.write("똑같은 이모지 2개를 찾아보세요!")
-    name = st.text_input("닉네임을 적어주세요")
-    if st.button("게임 시작!"):
-        if name:
-            st.session_state.nickname = name
-            st.session_state.cards = get_new_board()
-            st.session_state.score = 0
-            st.session_state.screen = 'GAME'
-            st.rerun()
-        else:
-            st.warning("닉네임을 입력하세요!")
+def handle_card_click(index, emoji):
+    # 클릭한 카드 기록
+    st.session_state.selected_cards.append((index, emoji))
 
-def show_game():
-    st.title(f"점수: {st.session_state.score}")
-    
-    # 3x3 그리드 형태
-    cols = st.columns(3)
-    for i, card in enumerate(st.session_state.cards):
-        if cols[i % 3].button(card["emoji"], key=card["id"]):
-            st.session_state.score += 10 # 간단한 클릭 점수 예시
-            st.rerun()
+    if len(st.session_state.selected_cards) == 2:
+        (idx1, emj1), (idx2, emj2) = st.session_state.selected_cards
+        
+        if emj1 == emj2:
+            st.session_state.score += MATCH_SCORE
+            st.toast("팡! 100점 획득!", icon="🎉")
             
-    if st.button("게임 종료"):
-        st.session_state.screen = 'RESULT'
-        st.rerun()
+            # 맞춘 두 카드 교체
+            current_emojis = [c['emoji'] for c in st.session_state.cards]
+            for idx in [idx1, idx2]:
+                st.session_state.cards[idx]['emoji'] = get_new_emoji(current_emojis)
+                # 교체 후 중복이 발생하지 않도록 짝을 맞춰주는 로직
+            
+            # 교체 후 짝을 다시 보장하기 위해 무작위로 하나 더 교체
+            target_idx = random.choice([i for i in range(len(st.session_state.cards)) if i not in [idx1, idx2]])
+            st.session_state.cards[target_idx]['emoji'] = st.session_state.cards[idx1]['emoji']
+            
+        else:
+            st.toast("틀렸어요!", icon="❌")
+        
+        st.session_state.selected_cards = []
 
-def show_result():
-    st.title("게임 종료!")
-    st.write(f"최종 점수: {st.session_state.score}")
-    if st.button("처음으로"):
-        st.session_state.screen = 'START'
-        st.rerun()
+# --- UI Screens ---
+def render_game():
+    st.subheader(f"점수: {st.session_state.score}")
+    
+    cols_count = 4 if st.session_state.difficulty == 'EASY' else 5
+    cols = st.columns(cols_count)
+    
+    for i, card in enumerate(st.session_state.cards):
+        if cols[i % cols_count].button(card['emoji'], key=card['id']):
+            handle_card_click(card['id'], card['emoji'])
+            st.rerun()
 
-# --- 메인 루프 ---
-if st.session_state.screen == 'START':
-    show_start()
-elif st.session_state.screen == 'GAME':
-    show_game()
-elif st.session_state.screen == 'RESULT':
-    show_result()
+# --- Main Flow ---
+# ... 이전 Start 화면 로직 동일 ...
