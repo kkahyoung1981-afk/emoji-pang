@@ -1,23 +1,20 @@
+
+
+import streamlit as st
+import random
+import json
+
+# CSS 스타일링은 import 바로 아래에 위치시킵니다.
 st.markdown("""
     <style>
-    /* 이모지 버튼을 크게 만들고 중앙 정렬 */
+    /* 이모지 버튼 스타일 */
     div.stButton > button {
         width: 100%;
         height: 80px;
         font-size: 40px;
-        border-radius: 20px;
-        background-color: #ffffff;
-        border: 2px solid #ffe082;
-    }
-    /* 버튼 클릭 시 느낌 */
-    div.stButton > button:hover {
-        background-color: #fff9c4;
     }
     </style>
 """, unsafe_allow_html=True)
-
-import streamlit as st
-import random
 
 # --- Constants ---
 EMOJI_POOL = [
